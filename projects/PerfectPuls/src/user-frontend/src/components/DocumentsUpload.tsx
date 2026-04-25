@@ -81,7 +81,7 @@ export default function DocumentsUpload({ files, setFiles }: Props) {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-1">Insurance Documents</h2>
         <p className="text-sm text-gray-500">
@@ -89,87 +89,90 @@ export default function DocumentsUpload({ files, setFiles }: Props) {
         </p>
       </div>
 
-      {/* Drop Zone */}
-      <div
-        className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
-          dragging
-            ? "border-teal-500 bg-teal-50 scale-[1.01]"
-            : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50"
-        }`}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          className="hidden"
-          multiple
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          onChange={handleChange}
-        />
-        <Upload className={`w-10 h-10 mx-auto mb-3 transition-colors ${dragging ? "text-teal-600" : "text-gray-400"}`} />
-        {dragging ? (
-          <p className="text-teal-600 font-semibold">Drop files here!</p>
-        ) : (
-          <>
-            <p className="text-gray-600 font-medium">Drag &amp; drop files here</p>
-            <p className="text-gray-400 text-sm mt-1">or click to browse</p>
-            <p className="text-gray-400 text-xs mt-3">Supports PDF, DOC, DOCX, JPG, PNG</p>
-          </>
-        )}
-      </div>
-
-      {/* File List */}
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-700 text-sm">
-            {allFiles.length} document{allFiles.length !== 1 ? "s" : ""}
-          </h3>
-          <span className="text-xs text-gray-400">Uploaded</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Drop Zone */}
+        <div
+          className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+            dragging
+              ? "border-teal-500 bg-teal-50 scale-[1.01]"
+              : "border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50"
+          }`}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            multiple
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={handleChange}
+          />
+          <Upload className={`w-12 h-12 mx-auto mb-3 transition-colors ${dragging ? "text-teal-600" : "text-gray-400"}`} />
+          {dragging ? (
+            <p className="text-teal-600 font-semibold text-lg">Drop files here!</p>
+          ) : (
+            <>
+              <p className="text-gray-600 font-medium text-lg">Drag &amp; drop files here</p>
+              <p className="text-gray-400 text-sm mt-1">or click to browse</p>
+              <p className="text-gray-400 text-xs mt-3">Supports PDF, DOC, DOCX, JPG, PNG</p>
+            </>
+          )}
         </div>
-        <div className="divide-y divide-gray-100">
-          {allFiles.map((file) => {
-            const isSample = SAMPLE_DOCS.some((s) => s.id === file.id);
-            return (
-              <div key={file.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
-                <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <FileIcon type={file.type} />
+
+        {/* File List */}
+        <div className="bg-white rounded-2xl shadow overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-700 text-sm">
+              {allFiles.length} document{allFiles.length !== 1 ? "s" : ""}
+            </h3>
+            <span className="text-xs text-gray-400">Uploaded</span>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {allFiles.map((file) => {
+              const isSample = SAMPLE_DOCS.some((s) => s.id === file.id);
+              return (
+                <div key={file.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center shrink-0">
+                    <FileIcon type={file.type} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {formatBytes(file.size)} · {file.uploadDate}
+                      {isSample && (
+                        <span className="ml-2 bg-teal-50 text-teal-600 px-1.5 py-0.5 rounded text-xs">
+                          sample
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {!isSample && (
+                    <button
+                      onClick={() => deleteFile(file.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {isSample && (
+                    <File className="w-4 h-4 text-gray-300" />
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
-                  <p className="text-xs text-gray-400">
-                    {formatBytes(file.size)} · {file.uploadDate}
-                    {isSample && (
-                      <span className="ml-2 bg-teal-50 text-teal-600 px-1.5 py-0.5 rounded text-xs">
-                        sample
-                      </span>
-                    )}
-                  </p>
-                </div>
-                {!isSample && (
-                  <button
-                    onClick={() => deleteFile(file.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-                {isSample && (
-                  <File className="w-4 h-4 text-gray-300" />
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          {files.length > 0 && (
+            <div className="px-5 py-3 bg-teal-50 border-t border-teal-100">
+              <p className="text-sm text-teal-600">
+                ✓ {files.length} new document{files.length !== 1 ? "s" : ""} added — check the Knowledge Graph tab
+              </p>
+            </div>
+          )}
         </div>
       </div>
-
-      {files.length > 0 && (
-        <p className="text-sm text-teal-600 text-center">
-          ✓ {files.length} new document{files.length !== 1 ? "s" : ""} added — view your Knowledge Graph tab to explore connections
-        </p>
-      )}
     </div>
   );
 }

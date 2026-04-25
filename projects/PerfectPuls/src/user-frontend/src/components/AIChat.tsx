@@ -118,7 +118,7 @@ export default function AIChat() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-160px)] min-h-[520px]">
+    <div className="flex flex-col h-[calc(100vh-160px)] min-h-[520px]">
       <div className="mb-4">
         <h2 className="text-xl font-semibold text-gray-800 mb-1">AI Insurance Assistant</h2>
         <p className="text-sm text-gray-500">Powered by Gemini 2.5 Pro — ask anything about your coverage</p>
@@ -129,7 +129,7 @@ export default function AIChat() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                 msg.role === "assistant" ? "bg-teal-100 text-teal-600" : "bg-gray-100 text-gray-600"
               }`}
             >
@@ -196,7 +196,7 @@ export default function AIChat() {
         <button
           onClick={() => send(input)}
           disabled={loading || !input.trim()}
-          className="w-9 h-9 bg-teal-600 text-white rounded-xl flex items-center justify-center hover:bg-teal-700 transition-colors disabled:opacity-40 flex-shrink-0"
+          className="w-9 h-9 bg-teal-600 text-white rounded-xl flex items-center justify-center hover:bg-teal-700 transition-colors disabled:opacity-40 shrink-0"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>

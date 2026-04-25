@@ -24,7 +24,7 @@ export default function Portal() {
     <div className="min-h-screen bg-gray-50">
       {/* Tab Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-[57px] z-10">
-        <div className="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
+        <div className="w-full px-6 flex gap-1 overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -43,7 +43,7 @@ export default function Portal() {
       </nav>
 
       {/* Tab Content */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="w-full px-4 sm:px-6 py-6">
         {activeTab === "savings" && <SavingsDashboard />}
         {activeTab === "documents" && (
           <DocumentsUpload files={uploadedFiles} setFiles={setUploadedFiles} />

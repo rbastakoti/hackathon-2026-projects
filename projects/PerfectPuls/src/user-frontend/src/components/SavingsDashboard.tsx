@@ -56,14 +56,14 @@ export default function SavingsDashboard() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Filter buttons */}
         <div className="flex gap-2 flex-wrap">
           {FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === f
                   ? "bg-teal-600 text-white shadow"
                   : "bg-white text-gray-600 shadow hover:bg-teal-50"
@@ -75,7 +75,7 @@ export default function SavingsDashboard() {
         </div>
 
         {/* View toggle + month picker */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
           <div className="flex bg-white rounded-lg shadow overflow-hidden">
             {(["month", "year"] as View[]).map((v) => (
               <button
@@ -113,7 +113,7 @@ export default function SavingsDashboard() {
           No categories found for &quot;{filter}&quot;.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((cat) => {
             const sessionPct = Math.round((cat.sessionsUsed / cat.sessionsTotal) * 100);
             const allowancePct = Math.round((cat.allowanceUsed / cat.allowanceTotal) * 100);
@@ -188,51 +188,75 @@ export default function SavingsDashboard() {
         </div>
       )}
 
-      {/* Donut Chart */}
+      {/* Donut + Activity side-by-side on large screens */}
       {filtered.length > 0 && (
-        <div className="bg-white p-6 rounded-2xl shadow">
-          <h2 className="font-semibold text-gray-800 mb-4">Savings Distribution</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={filtered}
-                dataKey="saved"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={75}
-                outerRadius={115}
-                paddingAngle={3}
-              >
-                {filtered.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => [`$${v}`, "Saved"]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Donut Chart */}
+          <div className="bg-white p-6 rounded-2xl shadow">
+            <h2 className="font-semibold text-gray-800 mb-4">Savings Distribution</h2>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={filtered}
+                  dataKey="saved"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={100}
+                  paddingAngle={3}
+                >
+                  {filtered.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => [`$${v}`, "Saved"]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white p-6 rounded-2xl shadow">
+            <h2 className="font-semibold text-gray-800 mb-4">Recent Activity</h2>
+            <div className="divide-y divide-gray-100">
+              {dataset.recentActivity.map((item, i) => (
+                <div key={i} className="flex justify-between items-center py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">{item.service}</p>
+                      <p className="text-xs text-gray-400">{item.provider} · {item.date}</p>
+                    </div>
+                  </div>
+                  <span className="text-teal-600 font-semibold text-sm">+${item.saved}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Recent Activity */}
-      <div className="bg-white p-6 rounded-2xl shadow">
-        <h2 className="font-semibold text-gray-800 mb-4">Recent Activity</h2>
-        <div className="divide-y divide-gray-100">
-          {dataset.recentActivity.map((item, i) => (
-            <div key={i} className="flex justify-between items-center py-3">
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{item.service}</p>
-                  <p className="text-xs text-gray-400">{item.provider} · {item.date}</p>
+      {/* Recent Activity when no categories filtered (show standalone) */}
+      {filtered.length === 0 && (
+        <div className="bg-white p-6 rounded-2xl shadow">
+          <h2 className="font-semibold text-gray-800 mb-4">Recent Activity</h2>
+          <div className="divide-y divide-gray-100">
+            {dataset.recentActivity.map((item, i) => (
+              <div key={i} className="flex justify-between items-center py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">{item.service}</p>
+                    <p className="text-xs text-gray-400">{item.provider} · {item.date}</p>
+                  </div>
                 </div>
+                <span className="text-teal-600 font-semibold text-sm">+${item.saved}</span>
               </div>
-              <span className="text-teal-600 font-semibold text-sm">+${item.saved}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

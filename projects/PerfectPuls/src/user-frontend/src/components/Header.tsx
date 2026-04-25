@@ -12,7 +12,7 @@ interface HeaderProps {
 export default function Header({ name, email, image }: HeaderProps) {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
-      <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="w-full px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
             <svg

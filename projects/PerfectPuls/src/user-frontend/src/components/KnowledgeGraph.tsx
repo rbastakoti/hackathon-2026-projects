@@ -131,7 +131,7 @@ export default function KnowledgeGraph({ files }: Props) {
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
+    <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold text-gray-800 mb-1">Insurance Knowledge Graph</h2>
         <p className="text-sm text-gray-500">
@@ -226,7 +226,7 @@ export default function KnowledgeGraph({ files }: Props) {
 
       {files.length === 0 && (
         <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 text-teal-700 text-sm rounded-xl px-4 py-3">
-          <Share2 className="w-4 h-4 flex-shrink-0" />
+          <Share2 className="w-4 h-4 shrink-0" />
           <span>Upload additional documents in the Documents tab to expand this graph with your own policies.</span>
         </div>
       )}
