@@ -137,7 +137,7 @@ class GeminiService:
         """Saves JSON results to sample-pd folder."""
         try:
             # Use specific sample-pd folder path
-            save_dir = Path("C:/Users/RBASTAKO/Projects/CareDeviHack/Project/hackathon-2026-projects/projects/PerfectPuls/src/backend/sample-pd")
+            save_dir = Path(__file__).parent.parent / "sample-pd"
             save_dir.mkdir(exist_ok=True)
             
             # Create timestamped filename
