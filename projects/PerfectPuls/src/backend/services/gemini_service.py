@@ -18,16 +18,17 @@ class GeminiService:
     Revised Gemini Service (2026 Edition)
     Specialized for Graph RAG extraction from Insurance SBCs.
     """
-    
+
     def __init__(self):
         if settings.google_ai_api_key:
             genai.configure(api_key=settings.google_ai_api_key)
-            # Use Gemini 3.1 Pro for the complex spatial reasoning of PDF tables
+            # Use Gemini 2.5 Pro for the complex spatial reasoning of PDF tables
             # generation_config forces the model to output ONLY valid JSON
             self.model = genai.GenerativeModel(
                 model_name='gemini-2.5-pro',
                 generation_config={"response_mime_type": "application/json"}
             )
+            self.embedding_model = "models/gemini-embedding-2"
             logger.info("Gemini 2.5 Pro initialized with Native JSON Mode")
         else:
             self.model = None
@@ -51,18 +52,18 @@ class GeminiService:
             # 2. Execute the Graph Extraction Prompt
             prompt = self._get_graph_extraction_prompt()
             logger.info(f"Analyzing policy structure for: {metadata.get('policy_name', 'Unknown')}")
-            
+
             response = await self.model.generate_content_async([prompt, uploaded_file])
-            
+
             # Check for empty response (copy-protected PDFs or API issues)
             if not response or not response.text:
                 logger.error("❌ Gemini returned an empty response. Check if the PDF is password protected.")
                 return {"status": "failed", "error": "Empty response from Gemini"}
-                
+
             # Parse JSON with safe cleaning (sometimes JSON mode still adds markdown)
             clean_json = response.text.replace("```json", "").replace("```", "").strip()
             graph_data = json.loads(clean_json)
-            
+
             # 4. Wrap with Hackathon-ready metadata
             processing_result = {
                 "policy_id": str(uuid.uuid4()),
@@ -78,7 +79,7 @@ class GeminiService:
             except Exception as save_error:
                 logger.error(f"Failed to save locally: {str(save_error)}")
                 # Continue processing even if save fails
-            
+
             return processing_result
 
         except Exception as e:
@@ -91,14 +92,14 @@ class GeminiService:
         Instructs the model to think in terms of Nodes and Edges.
         """
         return """
-        Analyze this Insurance Summary of Benefits (SBC) PDF. 
+        Analyze this Insurance Summary of Benefits (SBC) PDF.
         Your goal is to extract the logical structure of the policy for a Knowledge Graph.
-        
+
         Focus on:
         1. SERVICES (e.g., Physiotherapy, Acupuncture, Gym Membership)
         2. RULES (e.g., Copays, Visit Limits, Deductibles)
         3. PERKS (e.g., Healthy Rewards, Wellness Discounts)
-        
+
         Return a JSON object strictly following this schema:
         {
           "nodes": [
@@ -108,12 +109,29 @@ class GeminiService:
             {"from": "node_id", "to": "node_id", "relationship": "INCLUDES|HAS_LIMIT|SUBJECT_TO|DISCOUNTED_BY", "properties": {"value": "string"}}
           ]
         }
-        
+
         Rules:
         - If a service has a visit limit (e.g., 20 visits), create a HAS_LIMIT edge.
         - If a service is part of Cigna Healthy Rewards, use the DISCOUNTED_BY relationship.
         - Normalize names: use 'Physiotherapy' instead of 'Physical Therapy'.
         """
+
+    async def generate_embedding(self, text: str) -> list[float]:
+        """
+        Generates a vector using Google's cloud API.
+        No local CPU power or DLLs required!
+        """
+        try:
+            result = await asyncio.to_thread(
+                genai.embed_content,
+                model=self.embedding_model,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
+        except Exception as e:
+            logger.error(f"Embedding failed: {e}")
+            return []
 
     async def _save_locally(self, data: Dict[str, Any]):
         """Saves JSON results to sample-pd folder."""
@@ -121,19 +139,19 @@ class GeminiService:
             # Use specific sample-pd folder path
             save_dir = Path(__file__).parent.parent / "sample-pd"
             save_dir.mkdir(exist_ok=True)
-            
+
             # Create timestamped filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"graph_result_{data['policy_id']}_{timestamp}.json"
             full_path = save_dir / filename
-            
+
             # Write file
             await asyncio.to_thread(self._write_file, str(full_path), data)
-            
+
             if full_path.exists():
                 file_size = full_path.stat().st_size
                 logger.info(f"📁 Graph result saved to: {full_path} ({file_size} bytes)")
-                
+
         except Exception as e:
             logger.error(f"❌ Save error: {str(e)}")
 

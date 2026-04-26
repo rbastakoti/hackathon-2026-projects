@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     
     # Neo4j Database
     neo4j_uri: str = "bolt://localhost:7687"
-    neo4j_user: str = "neo4j"
+    neo4j_username: str = "neo4j"
     neo4j_password: str = ""
     neo4j_database: str = "policy_pilot"
     

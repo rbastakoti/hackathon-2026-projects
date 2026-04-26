@@ -43,6 +43,9 @@ uploads/*
 *.tmp
 *.log
 sample-pd/
+.venv
+
+
 
 # Neo4j
 neo4j_data/
