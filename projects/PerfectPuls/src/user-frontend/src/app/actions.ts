@@ -1,7 +1,4 @@
 "use server";
 
-import { signOut } from "@/auth";
-
-export async function handleSignOut() {
-  await signOut({ redirectTo: "/login" });
-}
+// Auth removed — no-op placeholder kept so existing imports don't break
+export async function handleSignOut() {}

@@ -1,3 +1,10 @@
-import { handlers } from "@/auth";
+import { NextResponse } from "next/server";
 
-export const { GET, POST } = handlers;
+// Auth disabled
+export function GET() {
+  return NextResponse.json({ message: "Auth disabled" }, { status: 200 });
+}
+
+export function POST() {
+  return NextResponse.json({ message: "Auth disabled" }, { status: 200 });
+}
