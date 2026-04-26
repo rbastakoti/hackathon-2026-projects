@@ -285,6 +285,7 @@ export default function SavingsDashboard() {
                   innerRadius={70}
                   outerRadius={105}
                   paddingAngle={3}
+                  // @ts-expect-error recharts v3 type definitions lag behind runtime API
                   activeIndex={activeSlice}
                   activeShape={renderActiveShape}
                   onMouseEnter={onPieEnter}
@@ -294,7 +295,7 @@ export default function SavingsDashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number) => [`$${v.toLocaleString()}`, "Saved"]}
+                  formatter={(v) => [`$${typeof v === "number" ? v.toLocaleString() : v}`, "Saved"]}
                   contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
                 />
               </PieChart>
