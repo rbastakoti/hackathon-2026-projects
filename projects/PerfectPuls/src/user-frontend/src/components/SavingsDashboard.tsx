@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { TrendingUp, ShieldCheck, ChevronDown } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, Sector, ResponsiveContainer } from "recharts";
-import { MONTHS, Month, monthlyData, yearData, Category, Activity } from "@/lib/data";
+import { Activity, Category, DashboardDataResponse, DashboardDataset, EMPTY_DATASET } from "../lib/data";
 
 const COLORS = ["#0d9488", "#14b8a6", "#5eead4", "#99f6e4", "#0891b2", "#22d3ee"];
 const FILTERS = ["All", "Medical", "Wellness", "Mental Health"] as const;
@@ -18,6 +18,39 @@ const CATEGORY_ICONS: Record<string, string> = {
   Dental: "🦷",
   Vision: "👁️",
 };
+
+const KEYWORD_ICONS: Array<{ keywords: string[]; icon: string }> = [
+  { keywords: ["physio", "physical"], icon: "🦴" },
+  { keywords: ["acupuncture", "needle"], icon: "🪡" },
+  { keywords: ["nutrition", "diet", "wellness"], icon: "🥗" },
+  { keywords: ["mental", "therapy", "counsel", "psych"], icon: "🧠" },
+  { keywords: ["dental", "tooth", "orthodont"], icon: "🦷" },
+  { keywords: ["vision", "opt", "eye"], icon: "👁️" },
+  { keywords: ["massage", "chiro", "rehab"], icon: "💆" },
+  { keywords: ["fitness", "gym", "exercise"], icon: "🏋️" },
+  { keywords: ["prevent", "vaccine", "immun"], icon: "🛡️" },
+  { keywords: ["lab", "test", "diagnostic"], icon: "🧪" },
+];
+
+const FALLBACK_ICONS = ["💊", "🩺", "🏥", "🧬", "🫀", "🫁", "🦿", "🧑‍⚕️"];
+
+function getServiceIcon(name: string): string {
+  if (!name) return "💊";
+
+  const direct = CATEGORY_ICONS[name];
+  if (direct) return direct;
+
+  const normalized = name.trim().toLowerCase();
+  for (const entry of KEYWORD_ICONS) {
+    if (entry.keywords.some((keyword) => normalized.includes(keyword))) {
+      return entry.icon;
+    }
+  }
+
+  // Deterministic fallback: same service name always maps to the same icon.
+  const hash = Array.from(normalized).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return FALLBACK_ICONS[hash % FALLBACK_ICONS.length];
+}
 
 // Renders the expanded active slice with a label
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,12 +78,58 @@ const renderActiveShape = (props: any) => {
 
 export default function SavingsDashboard() {
   const [view, setView] = useState<View>("year");
-  const [selectedMonth, setSelectedMonth] = useState<Month>("April");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [filter, setFilter] = useState<Filter>("All");
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [activeSlice, setActiveSlice] = useState<number>(0);
   const onPieEnter = useCallback((_: unknown, index: number) => setActiveSlice(index), []);
   const [extensionVisits, setExtensionVisits] = useState<Activity[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardDataResponse | null>(null);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDashboard() {
+      try {
+        setIsDashboardLoading(true);
+        const response = await fetch("/api/dashboard", { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load dashboard data (${response.status})`);
+        }
+
+        const payload = (await response.json()) as DashboardDataResponse;
+        if (!mounted) return;
+
+        setDashboardData(payload);
+        if (payload.availableMonths.length > 0) {
+          setSelectedMonth(payload.availableMonths[0]);
+        }
+      } catch (error) {
+        console.error("Dashboard data fetch failed:", error);
+        if (!mounted) return;
+
+        setDashboardData({
+          status: "error",
+          message: "Failed to load live dashboard data",
+          availableMonths: [],
+          monthlyData: {},
+          yearData: EMPTY_DATASET,
+        });
+      } finally {
+        if (mounted) {
+          setIsDashboardLoading(false);
+        }
+      }
+    }
+
+    loadDashboard();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     function load() {
@@ -64,9 +143,22 @@ export default function SavingsDashboard() {
     return () => window.removeEventListener("perfectpuls_visits_updated", load);
   }, []);
 
-  const dataset = view === "year" ? yearData : monthlyData[selectedMonth];
+  const availableMonths = dashboardData?.availableMonths ?? [];
+  const selectedMonthDataset = selectedMonth ? dashboardData?.monthlyData[selectedMonth] : undefined;
+  const dataset: DashboardDataset =
+    view === "year"
+      ? dashboardData?.yearData ?? EMPTY_DATASET
+      : selectedMonthDataset ?? dashboardData?.yearData ?? EMPTY_DATASET;
   const filtered: Category[] =
     filter === "All" ? dataset.categories : dataset.categories.filter((c) => c.type === filter);
+
+  if (isDashboardLoading) {
+    return (
+      <div className="bg-white rounded-2xl shadow p-8 text-center text-gray-500">
+        Loading savings dashboard from your policy graph...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -133,12 +225,17 @@ export default function SavingsDashboard() {
             <div className="relative">
               <select
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value as Month)}
+                onChange={(e) => setSelectedMonth(e.target.value)}
                 className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500"
+                disabled={availableMonths.length === 0}
               >
-                {MONTHS.map((m) => (
-                  <option key={m} value={m}>{m} 2026</option>
-                ))}
+                {availableMonths.length === 0 ? (
+                  <option value="">No monthly data</option>
+                ) : (
+                  availableMonths.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))
+                )}
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -154,8 +251,8 @@ export default function SavingsDashboard() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((cat) => {
-            const sessionPct = Math.round((cat.sessionsUsed / cat.sessionsTotal) * 100);
-            const allowancePct = Math.round((cat.allowanceUsed / cat.allowanceTotal) * 100);
+            const sessionPct = cat.sessionsTotal > 0 ? Math.round((cat.sessionsUsed / cat.sessionsTotal) * 100) : 0;
+            const allowancePct = cat.allowanceTotal > 0 ? Math.round((cat.allowanceUsed / cat.allowanceTotal) * 100) : 0;
             const remaining = cat.allowanceTotal - cat.allowanceUsed;
             const sessionsLeft = cat.sessionsTotal - cat.sessionsUsed;
             const isHovered = hoveredCard === cat.name;
@@ -179,7 +276,7 @@ export default function SavingsDashboard() {
 
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{CATEGORY_ICONS[cat.name] ?? "💊"}</span>
+                    <span className="text-xl">{getServiceIcon(cat.name)}</span>
                     <h2 className="font-semibold text-gray-800">{cat.name}</h2>
                   </div>
                   <span className="text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
@@ -245,7 +342,6 @@ export default function SavingsDashboard() {
                   innerRadius={70}
                   outerRadius={105}
                   paddingAngle={3}
-                  activeIndex={activeSlice}
                   activeShape={renderActiveShape}
                   onMouseEnter={onPieEnter}
                 >
@@ -254,7 +350,7 @@ export default function SavingsDashboard() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number) => [`$${v.toLocaleString()}`, "Saved"]}
+                  formatter={(v) => [`$${Number(v ?? 0).toLocaleString()}`, "Saved"]}
                   contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
                 />
               </PieChart>
@@ -298,7 +394,7 @@ export default function SavingsDashboard() {
               {[...extensionVisits, ...dataset.recentActivity].slice(0, 10).map((item, i) => (
                 <div key={i} className="flex justify-between items-center py-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
+                    <span className="text-lg">{getServiceIcon(item.service)}</span>
                     <div>
                       <p className="text-sm font-medium text-gray-700">{item.service}</p>
                       <p className="text-xs text-gray-400">{item.provider} · {item.date}</p>
@@ -327,7 +423,7 @@ export default function SavingsDashboard() {
             {[...extensionVisits, ...dataset.recentActivity].slice(0, 10).map((item, i) => (
               <div key={i} className="flex justify-between items-center py-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
+                  <span className="text-lg">{getServiceIcon(item.service)}</span>
                   <div>
                     <p className="text-sm font-medium text-gray-700">{item.service}</p>
                     <p className="text-xs text-gray-400">{item.provider} · {item.date}</p>

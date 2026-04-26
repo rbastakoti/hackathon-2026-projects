@@ -225,34 +225,38 @@ async def get_dashboard_data():
     Get dashboard data for the frontend
     """
     try:
-        # Get the latest policy data from Neo4j
         policy_id = await neo4j_service.get_latest_policy_id()
-        
+
         if not policy_id:
             return {
                 "status": "no_policies",
                 "message": "No policies found",
-                "data": None
+                "availableMonths": [],
+                "monthlyData": {},
+                "yearData": {
+                    "totalSaved": 0,
+                    "outOfPocketAvoided": 0,
+                    "categories": [],
+                    "recentActivity": [],
+                },
             }
-        
-        # You can extend this to return actual user data from your database
-        # For now, return a success status so frontend knows backend is connected
-        return {
-            "status": "success", 
-            "message": "Backend connected",
-            "policy_id": policy_id,
-            "data": {
-                "total_policies": 1,
-                "last_updated": datetime.now().isoformat()
-            }
-        }
+
+        dashboard_data = await neo4j_service.get_savings_dashboard_data(policy_id)
+        return dashboard_data
         
     except Exception as e:
         logger.error(f"❌ Dashboard data error: {str(e)}")
         return {
             "status": "error",
             "message": f"Dashboard data error: {str(e)}",
-            "data": None
+            "availableMonths": [],
+            "monthlyData": {},
+            "yearData": {
+                "totalSaved": 0,
+                "outOfPocketAvoided": 0,
+                "categories": [],
+                "recentActivity": [],
+            },
         }
     
 
