@@ -70,22 +70,56 @@ const BASE_EDGES: Edge[] = [
 
 // Extra nodes that appear when a user uploads an additional document
 function makeUploadedDocNodes(file: UploadedFile, index: number): { nodes: Node[]; edges: Edge[] } {
-  const baseX = 200 + index * 350;
+  const baseX = 200 + index * 380;
   const docId = `udoc-${file.id}`;
-  const termId = `uterm-${file.id}`;
-  const valId = `uval-${file.id}`;
-  return {
-    nodes: [
-      { id: docId, label: file.name.replace(/\.(pdf|docx?)$/i, ""), group: "document", x: baseX, y: 600 },
-      { id: termId, label: "Claims Process", group: "term", x: baseX, y: 700 },
-      { id: valId, label: "30-day turnaround", group: "value", x: baseX, y: 790 },
-    ],
-    edges: [
+  const newNodes: Node[] = [
+    { id: docId, label: file.name.replace(/\.(pdf|docx?)$/i, ""), group: "document", x: baseX, y: 600 },
+  ];
+  const newEdges: Edge[] = [];
+
+  // Use real coverage types from backend if available
+  if (file.coverageTypes && file.coverageTypes.length > 0) {
+    file.coverageTypes.slice(0, 4).forEach((coverage, ci) => {
+      const catId = `ucat-${file.id}-${ci}`;
+      newNodes.push({ id: catId, label: coverage, group: "category", x: baseX - 150 + ci * 110, y: 710 });
+      newEdges.push({ from: docId, to: catId });
+    });
+  }
+
+  // Add key entities as term nodes
+  if (file.keyEntities && file.keyEntities.length > 0) {
+    file.keyEntities.slice(0, 3).forEach((entity, ei) => {
+      const termId = `uterm-${file.id}-${ei}`;
+      newNodes.push({ id: termId, label: entity, group: "term", x: baseX - 80 + ei * 100, y: 810 });
+      newEdges.push({ from: docId, to: termId });
+    });
+  }
+
+  // Add provider networks as value nodes
+  if (file.providerNetworks && file.providerNetworks.length > 0) {
+    file.providerNetworks.slice(0, 2).forEach((network, ni) => {
+      const valId = `uval-${file.id}-${ni}`;
+      newNodes.push({ id: valId, label: network, group: "value", x: baseX - 50 + ni * 120, y: 900 });
+      newEdges.push({ from: docId, to: valId });
+    });
+  }
+
+  // Fallback if no backend data
+  if (newNodes.length === 1) {
+    const termId = `uterm-${file.id}`;
+    const valId = `uval-${file.id}`;
+    newNodes.push(
+      { id: termId, label: "Claims Process", group: "term", x: baseX, y: 710 },
+      { id: valId, label: "30-day turnaround", group: "value", x: baseX, y: 810 }
+    );
+    newEdges.push(
       { from: docId, to: "cat-mental" },
       { from: docId, to: termId },
-      { from: termId, to: valId },
-    ],
-  };
+      { from: termId, to: valId }
+    );
+  }
+
+  return { nodes: newNodes, edges: newEdges };
 }
 
 const GROUP_COLORS: Record<Node["group"], string> = {

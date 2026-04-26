@@ -9,6 +9,14 @@ export type UploadedFile = {
   size: number;
   uploadDate: string;
   type: string;
+  // Populated from backend PDFProcessResponse after successful upload
+  policyId?: string;
+  coverageTypes?: string[];
+  keyEntities?: string[];
+  providerNetworks?: string[];
+  entitiesExtracted?: number;
+  nodesCreated?: number;
+  relationshipsCreated?: number;
 };
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
@@ -116,8 +124,29 @@ export default function DocumentsUpload({ files, setFiles }: Props) {
       });
 
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const summary = data?.extraction_summary ?? {};
+        const preview = data?.graph_preview ?? {};
+
         setUploadEntries((prev) =>
           prev.map((e) => (e.id === id ? { ...e, status: "success" } : e))
+        );
+        // Enrich the file record with graph data from the backend
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  policyId: data?.policy_id,
+                  coverageTypes: preview.coverage_types ?? [],
+                  keyEntities: preview.key_entities ?? [],
+                  providerNetworks: preview.provider_networks ?? [],
+                  entitiesExtracted: summary.entities_extracted,
+                  nodesCreated: summary.nodes_created,
+                  relationshipsCreated: summary.relationships_created,
+                }
+              : f
+          )
         );
       } else {
         const data = await res.json().catch(() => ({}));
@@ -243,6 +272,26 @@ export default function DocumentsUpload({ files, setFiles }: Props) {
                     {entry.status === "error" && entry.errorMsg && (
                       <p className="text-xs text-red-400 mt-0.5 truncate">{entry.errorMsg}</p>
                     )}
+                    {/* Extraction summary from backend */}
+                    {entry.status === "success" && !isSample && (() => {
+                      const file = files.find((f) => f.id === entry.id);
+                      if (!file?.nodesCreated) return null;
+                      return (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          <span className="text-xs bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded">
+                            {file.nodesCreated} nodes
+                          </span>
+                          <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                            {file.relationshipsCreated} edges
+                          </span>
+                          {file.coverageTypes?.slice(0, 2).map((ct) => (
+                            <span key={ct} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded truncate max-w-30">
+                              {ct}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Status indicator */}
