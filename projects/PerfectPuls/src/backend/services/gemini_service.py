@@ -25,10 +25,10 @@ class GeminiService:
             # Use Gemini 3.1 Pro for the complex spatial reasoning of PDF tables
             # generation_config forces the model to output ONLY valid JSON
             self.model = genai.GenerativeModel(
-                model_name='gemini-3.1-pro',
+                model_name='gemini-2.5-pro',
                 generation_config={"response_mime_type": "application/json"}
             )
-            logger.info("Gemini 3.1 Pro initialized with Native JSON Mode")
+            logger.info("Gemini 2.5 Pro initialized with Native JSON Mode")
         else:
             self.model = None
             logger.warning("GOOGLE_AI_API_KEY missing. Ensure .env is configured.")
@@ -119,7 +119,7 @@ class GeminiService:
         """Saves JSON results to sample-pd folder."""
         try:
             # Use specific sample-pd folder path
-            save_dir = Path("C:/Users/RBASTAKO/Projects/CareDeviHack/Project/hackathon-2026-projects/projects/PerfectPuls/src/backend/sample-pd")
+            save_dir = Path(__file__).parent.parent / "sample-pd"
             save_dir.mkdir(exist_ok=True)
             
             # Create timestamped filename
