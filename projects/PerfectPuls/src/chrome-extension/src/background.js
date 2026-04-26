@@ -110,24 +110,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Parse a dollar string like "$125" → 125
+function parseDollar(str) {
+  const n = parseFloat((str || '').replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
 // Handle the website analysis workflow
 async function handleWebsiteAnalysis(websiteData, tabId) {
   try {
     // Call API to analyze the scraped data
     const analysisResult = await callAnalysisAPI(websiteData);
-    
-    // Store result for side panel
+
+    // Build a visit entry for the dashboard's Recent Activity
+    const visitEntry = {
+      date: new Date().toISOString().split('T')[0],
+      provider: websiteData.basic_info?.title || websiteData.basic_info?.domain || 'Unknown Provider',
+      service: analysisResult.benefits_services?.service_name || 'Health Service',
+      saved: parseDollar(analysisResult.money_saved?.savings_per_visit),
+      url: websiteData.basic_info?.url
+    };
+
+    // Prepend to recentVisits (keep last 20)
+    const stored = await chrome.storage.local.get('recentVisits');
+    const updated = [visitEntry, ...(stored.recentVisits || [])].slice(0, 20);
+
+    // Store result and visit log for side panel + dashboard
     await chrome.storage.local.set({
       'analysisResult': analysisResult,
+      'recentVisits': updated,
       'lastAnalysis': {
         timestamp: new Date().toISOString(),
         url: websiteData.basic_info?.url,
         tabId: tabId
       }
     });
-    
+
     console.log('Analysis result stored:', analysisResult);
-    
+
     return analysisResult;
     
   } catch (error) {

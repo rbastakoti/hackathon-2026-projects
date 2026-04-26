@@ -82,3 +82,29 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+// --- Dashboard sync ---
+// When running on the dashboard (localhost), push recentVisits from
+// chrome.storage into the page's localStorage so the React app can read them.
+function syncVisitsToDashboard(visits) {
+  try {
+    localStorage.setItem('perfectpuls_visits', JSON.stringify(visits));
+    window.dispatchEvent(new Event('perfectpuls_visits_updated'));
+  } catch (e) {
+    console.error('Policy Pilot: failed to sync visits', e);
+  }
+}
+
+if (window.location.hostname === 'localhost') {
+  // Initial sync on page load
+  chrome.storage.local.get('recentVisits', (data) => {
+    if (data.recentVisits) syncVisitsToDashboard(data.recentVisits);
+  });
+
+  // Keep in sync whenever a new visit is recorded
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.recentVisits?.newValue) {
+      syncVisitsToDashboard(changes.recentVisits.newValue);
+    }
+  });
+}

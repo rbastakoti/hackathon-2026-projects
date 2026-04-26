@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { TrendingUp, ShieldCheck, ChevronDown } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { MONTHS, Month, monthlyData, yearData, Category } from "@/lib/data";
+import { PieChart, Pie, Cell, Tooltip, Sector, ResponsiveContainer } from "recharts";
+import { MONTHS, Month, monthlyData, yearData, Category, Activity } from "@/lib/data";
 
 const COLORS = ["#0d9488", "#14b8a6", "#5eead4", "#99f6e4", "#0891b2", "#22d3ee"];
 const FILTERS = ["All", "Medical", "Wellness", "Mental Health"] as const;
@@ -19,11 +19,50 @@ const CATEGORY_ICONS: Record<string, string> = {
   Vision: "👁️",
 };
 
+// Renders the expanded active slice with a label
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const renderActiveShape = (props: any) => {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+  return (
+    <g>
+      {/* Center label */}
+      <text x={cx} y={cy - 10} textAnchor="middle" fill="#1f2937" className="text-base font-bold" style={{ fontSize: 18, fontWeight: 700 }}>
+        ${value.toLocaleString()}
+      </text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#6b7280" style={{ fontSize: 12 }}>
+        {payload.name}
+      </text>
+      <text x={cx} y={cy + 30} textAnchor="middle" fill="#0d9488" style={{ fontSize: 12, fontWeight: 600 }}>
+        {(percent * 100).toFixed(1)}%
+      </text>
+      {/* Expanded outer slice */}
+      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 10} startAngle={startAngle} endAngle={endAngle} fill={fill} />
+      {/* Ring highlight */}
+      <Sector cx={cx} cy={cy} innerRadius={outerRadius + 14} outerRadius={outerRadius + 18} startAngle={startAngle} endAngle={endAngle} fill={fill} />
+    </g>
+  );
+};
+
 export default function SavingsDashboard() {
   const [view, setView] = useState<View>("year");
   const [selectedMonth, setSelectedMonth] = useState<Month>("April");
   const [filter, setFilter] = useState<Filter>("All");
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [activeSlice, setActiveSlice] = useState<number>(0);
+  const onPieEnter = useCallback((_: unknown, index: number) => setActiveSlice(index), []);
+  const [extensionVisits, setExtensionVisits] = useState<Activity[]>([]);
+
+  useEffect(() => {
+    function load() {
+      try {
+        const raw = localStorage.getItem("perfectpuls_visits");
+        if (raw) setExtensionVisits(JSON.parse(raw));
+      } catch { /* extension not installed or no visits yet */ }
+    }
+    load();
+    window.addEventListener("perfectpuls_visits_updated", load);
+    return () => window.removeEventListener("perfectpuls_visits_updated", load);
+  }, []);
 
   const dataset = view === "year" ? yearData : monthlyData[selectedMonth];
   const filtered: Category[] =
@@ -193,8 +232,9 @@ export default function SavingsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Donut Chart */}
           <div className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="font-semibold text-gray-800 mb-4">Savings Distribution</h2>
-            <ResponsiveContainer width="100%" height={280}>
+            <h2 className="font-semibold text-gray-800 mb-1">Savings Distribution</h2>
+            <p className="text-xs text-gray-400 mb-4">Hover a slice to explore</p>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={filtered}
@@ -202,25 +242,60 @@ export default function SavingsDashboard() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={100}
+                  innerRadius={70}
+                  outerRadius={105}
                   paddingAngle={3}
+                  activeIndex={activeSlice}
+                  activeShape={renderActiveShape}
+                  onMouseEnter={onPieEnter}
                 >
                   {filtered.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="white" strokeWidth={2} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => [`$${v}`, "Saved"]} />
-                <Legend />
+                <Tooltip
+                  formatter={(v: number) => [`$${v.toLocaleString()}`, "Saved"]}
+                  contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
+                />
               </PieChart>
             </ResponsiveContainer>
+
+            {/* Custom legend with amounts + percentages */}
+            {(() => {
+              const total = filtered.reduce((s, c) => s + c.saved, 0);
+              return (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                  {filtered.map((cat, i) => {
+                    const pct = total > 0 ? ((cat.saved / total) * 100).toFixed(1) : "0.0";
+                    return (
+                      <button
+                        key={cat.name}
+                        onClick={() => setActiveSlice(i)}
+                        className={`flex items-center gap-2 text-left rounded-lg px-2 py-1 transition-colors ${activeSlice === i ? "bg-gray-50" : "hover:bg-gray-50"}`}
+                      >
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                        <span className="text-xs text-gray-600 truncate flex-1">{cat.name}</span>
+                        <span className="text-xs font-semibold text-gray-800">{pct}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Recent Activity */}
           <div className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="font-semibold text-gray-800 mb-4">Recent Activity</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-semibold text-gray-800">Recent Activity</h2>
+              {extensionVisits.length > 0 && (
+                <span className="text-xs bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full border border-teal-200">
+                  {extensionVisits.length} live from extension
+                </span>
+              )}
+            </div>
             <div className="divide-y divide-gray-100">
-              {dataset.recentActivity.map((item, i) => (
+              {[...extensionVisits, ...dataset.recentActivity].slice(0, 10).map((item, i) => (
                 <div key={i} className="flex justify-between items-center py-3">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
@@ -240,9 +315,16 @@ export default function SavingsDashboard() {
       {/* Recent Activity when no categories filtered (show standalone) */}
       {filtered.length === 0 && (
         <div className="bg-white p-6 rounded-2xl shadow">
-          <h2 className="font-semibold text-gray-800 mb-4">Recent Activity</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-semibold text-gray-800">Recent Activity</h2>
+            {extensionVisits.length > 0 && (
+              <span className="text-xs bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full border border-teal-200">
+                {extensionVisits.length} live from extension
+              </span>
+            )}
+          </div>
           <div className="divide-y divide-gray-100">
-            {dataset.recentActivity.map((item, i) => (
+            {[...extensionVisits, ...dataset.recentActivity].slice(0, 10).map((item, i) => (
               <div key={i} className="flex justify-between items-center py-3">
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{CATEGORY_ICONS[item.service] ?? "💊"}</span>
